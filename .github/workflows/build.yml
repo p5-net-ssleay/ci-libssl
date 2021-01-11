@@ -1,0 +1,241 @@
+name: 'Build libssl CI tarballs: Ubuntu 20.04'
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  GH_API_ROOT: https://api.github.com/repos/p5-net-ssleay/ci-libssl
+  GH_UPLOAD_ROOT: https://uploads.github.com/repos/p5-net-ssleay/ci-libssl
+
+jobs:
+  openssl:
+    name: OpenSSL ${{ matrix.version }}
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: true
+      matrix:
+        version:
+          # OpenSSL 1.1.1
+          - '1.1.1'
+          - '1.1.1a'
+          - '1.1.1b'
+          - '1.1.1c'
+          - '1.1.1d'
+          - '1.1.1e'
+          - '1.1.1f'
+          - '1.1.1g'
+          - '1.1.1h'
+          - '1.1.1i'
+    steps:
+      - name: Check out ci-libssl repository
+        uses: actions/checkout@v2
+
+      - name: Restore cached OpenSSL source tarball
+        uses: actions/cache@v2
+        with:
+          path: openssl-${{ matrix.version }}.tar.gz
+          key: openssl-${{ matrix.version }}
+
+      - name: Download OpenSSL source tarball
+        run: |
+          if [ ! -f openssl-${{ matrix.version }}.tar.gz ]; then
+            case "${{ matrix.version }}" in
+              0.9.8*)
+                src_path="source/old/0.9.x"
+                ;;
+              1.1.1*)
+                src_path="source"
+                ;;
+              *)
+                src_path="src/old/$(echo ${{ matrix.version }} | sed -e 's/[a-z]*$//')"
+                ;;
+            esac
+
+            curl \
+              -o openssl-${{ matrix.version }}.tar.gz \
+              https://www.openssl.org/$src_path/openssl-${{ matrix.version }}.tar.gz
+          fi
+
+      - name: Extract OpenSSL source tarball
+        run: |
+          tar xf openssl-${{ matrix.version }}.tar.gz
+
+      - name: Configure OpenSSL
+        working-directory: openssl-${{ matrix.version }}
+        run: |
+          config_opts=""
+
+          # OpenSSL 1.0.0 and above install libraries to PREFIX/lib64 on x86_64
+          # by default - install them to PREFIX/lib for consistency with OpenSSL
+          # 0.9.8
+          if echo ${{ matrix.version }} | grep -qv '^0'; then
+            config_opts="$config_opts --libdir=lib"
+          fi
+
+          # ASM has all kinds of problems on x86_64 in OpenSSL 0.9.8 and 1.0.0
+          if echo ${{ matrix.version }} | grep -q '^\(0\.9\.8\|1\.0\.0\)'; then
+            config_opts="$config_opts no-asm"
+            sed -i -e 's/^\(my \$no_asm\)=0;/\1=1;/' Configure
+          fi
+
+          # 1.1.0c and above don't add RPATH to OpenSSL binary when non-standard
+          # prefix is in use (https://github.com/openssl/openssl/issues/1740) -
+          # add it explicitly
+          if echo ${{ matrix.version }} | grep -q '^\(1\.1\.0[c-l]\|1\.1\.1\|3\)'; then
+            config_opts="$config_opts -Wl,--enable-new-dtags,-rpath,\$(LIBRPATH)"
+          fi
+
+          # glob() has been replaced with bsd_glob() in File::Glob
+          if echo ${{ matrix.version }} | grep -q '^1\.1'; then
+            for i in Configure test/build.info util/process_docs.pl; do
+              sed -i -e "s#'File::Glob' => qw/glob/#'File::Glob' => qw/bsd_glob/#g" $i
+            done
+          fi
+
+          ./config \
+            --prefix=$HOME/libssl \
+            --openssldir=$HOME/libssl \
+            -Wa,--noexecstack \
+            -fPIC \
+            enable-shared \
+            $config_opts
+
+      - name: Build OpenSSL
+        working-directory: openssl-${{ matrix.version }}
+        run: |
+          make depend || true
+          make
+
+      - name: Install OpenSSL
+        working-directory: openssl-${{ matrix.version }}
+        run: |
+          make install_sw
+          make install_ssldirs || true
+
+      - name: Minify OpenSSL installation
+        run: |
+          ls -aslR $HOME/libssl
+          du -sh $HOME/libssl
+          echo ================================
+          cd $HOME/libssl
+
+          # Don't keep unnecessary engines
+          for i in 4758cca aep atalla capi chil cswift gmp gost nuron padlock sureware ubsec; do
+            if echo ${{ matrix.version }} | grep -q '^1\.1'; then
+              rm -f $HOME/libssl/lib/engines-1.1/$i.so
+            else
+              rm -f $HOME/libssl/lib/engines/lib$i.so
+            fi
+          done
+
+          # These utilities aren't necessary for testing Net-SSLeay
+          rm -f $HOME/libssl/bin/c_rehash
+          rm -rf $HOME/libssl/misc
+
+          # We don't need the static libraries
+          rm -f $HOME/libssl/lib/*.a
+
+          cd
+          ls -aslR $HOME/libssl
+          du -sh $HOME/libssl
+
+      - name: Create OpenSSL binary tarball
+        id: tarball
+        run: |
+          cd $HOME
+          tar \
+            --sort=name \
+            --owner=root:0 \
+            --group=root:0 \
+            --mtime='UTC 2020-01-01' \
+            -cJf openssl-${{ matrix.version }}.tar.xz \
+            libssl
+
+      - name: Obtain GitHub App installation access token
+        id: gh_app
+        run: |
+          token="$(npx obtain-github-app-installation-access-token ci ${{ secrets.GH_APP_CREDENTIALS_TOKEN }})"
+          echo "::add-mask::$token"
+          echo "::set-output name=token::$token"
+
+      - name: Create GitHub release for OpenSSL ${{ matrix.version }}
+        id: release
+        run: |
+          release="$( \
+            curl \
+              --fail \
+              -H "Authorization: Bearer ${{ steps.gh_app.outputs.token }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              $GH_API_ROOT/releases/tags/openssl-${{ matrix.version }} \
+            || \
+            curl \
+              --fail \
+              -H "Authorization: Bearer ${{ steps.gh_app.outputs.token }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              -X POST \
+              -d '{
+                "tag_name": "openssl-${{ matrix.version }}",
+                "target_commitish": "${{ github.sha }}",
+                "name": "OpenSSL ${{ matrix.version }}",
+                "draft": false,
+                "prerelease": false
+              }' \
+              $GH_API_ROOT/releases \
+          )"
+
+          release_id="$(echo "$release" | jq -r .id)"
+          target_commit="$(echo "$release" | jq -r .target_commitish)"
+          asset_id="$(echo "$release" | jq -r '[ .assets[] | select(.name == "openssl-${{ matrix.version }}-ubuntu-20.04.tar.xz") ] | first.id')"
+
+          echo "::set-output name=release_id::$release_id"
+          echo "::set-output name=target_commit::$target_commit"
+          echo "::set-output name=asset_id::$asset_id"
+
+      - name: Update commit hash for openssl-${{ matrix.version }} tag
+        run: |
+          curl \
+            --fail \
+            -H "Authorization: Bearer ${{ steps.gh_app.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -X PATCH \
+            -d '{
+              "sha": "${{ github.sha }}",
+              "force": true
+            }' \
+            $GH_API_ROOT/git/refs/tags/openssl-${{ matrix.version }}
+        if: ${{ github.sha != steps.release.outputs.target_commit }}
+
+      - name: Update target commit hash for GitHub release
+        run: |
+          curl \
+            --fail \
+            -H "Authorization: Bearer ${{ steps.gh_app.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -X PATCH \
+            -d '{
+              "target_commitish": "${{ github.sha }}"
+            }' \
+            $GH_API_ROOT/releases/${{ steps.release.outputs.release_id }}
+        if: ${{ github.sha != steps.release.outputs.target_commit }}
+
+      - name: Upload GitHub release asset
+        run: |
+          if [ "${{ steps.release.outputs.asset_id }}" != "null" ]; then
+            curl \
+              --fail \
+              -H "Authorization: Bearer ${{ steps.gh_app.outputs.token }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              -X DELETE \
+              $GH_API_ROOT/releases/assets/${{ steps.release.outputs.asset_id }}
+          fi
+
+          curl \
+            --fail \
+            -H "Authorization: Bearer ${{ steps.gh_app.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Content-Type: application/x-xz" \
+            -X POST \
+            --data-binary "@$HOME/openssl-${{ matrix.version }}.tar.xz" \
+            $GH_UPLOAD_ROOT/releases/${{ steps.release.outputs.release_id }}/assets?name=openssl-${{ matrix.version }}-ubuntu-20.04.tar.xz
