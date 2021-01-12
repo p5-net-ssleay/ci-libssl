@@ -16,6 +16,9 @@ are supported.
 
 Tarballs are currently built for the following libssl implementations:
 
+* [LibreSSL](https://www.libressl.org) - stable releases in the following series
+  only; development versions are omitted:
+  * 3.2 series (3.2.2 - 3.2.3)
 * [OpenSSL](https://www.openssl.org) - stable releases in the following branches
   only; alpha, beta and prerelease versions are omitted:
   * 0.9.8 branch (0.9.8 - 0.9.8zh)

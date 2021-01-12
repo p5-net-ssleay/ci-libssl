@@ -1,4 +1,4 @@
-name: 'Build libssl CI tarballs: Ubuntu 20.04'
+name: 'Build: Ubuntu 20.04'
 
 on:
   push:
@@ -10,11 +10,268 @@ env:
   GH_UPLOAD_ROOT: https://uploads.github.com/repos/p5-net-ssleay/ci-libssl
 
 jobs:
+  libressl:
+    name: LibreSSL ${{ matrix.version }}
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: true
+      matrix:
+        version:
+          # LibreSSL 3.2
+          - '3.2.2'
+          - '3.2.3'
+    steps:
+      - name: Check out ci-libssl repository
+        uses: actions/checkout@v2
+
+      - name: Restore cached LibreSSL source tarball
+        uses: actions/cache@v2
+        with:
+          path: libressl-${{ matrix.version }}.tar.gz
+          key: libressl-${{ matrix.version }}
+
+      - name: Download LibreSSL source tarball
+        run: |
+          if [ ! -f libressl-${{ matrix.version }}.tar.gz ]; then
+            curl \
+              --fail \
+              -o libressl-${{ matrix.version }}.tar.gz \
+              https://ftp.openbsd.org/pub/OpenBSD/LibreSSL/libressl-${{ matrix.version }}.tar.gz
+          fi
+
+      - name: Extract LibreSSL source tarball
+        run: |
+          tar xf libressl-${{ matrix.version }}.tar.gz
+
+      - name: Configure LibreSSL
+        working-directory: libressl-${{ matrix.version }}
+        run: |
+          config_opts=""
+
+          # Engine support was removed in LibreSSL 2.2.2
+          if echo ${{ matrix.version }} | grep -q '^2\.\([01]\|2\.[01]\)'; then
+            config_opts="$config_opts --with-enginesdir=$HOME/libssl/lib/engines"
+          fi
+
+          # Don't install man pages
+          sed -i -e '/^ac_config_files=/s#man/Makefile##' configure
+          sed -i -e '/^SUBDIRS = /s/man//' Makefile.am
+          sed -i -e '/^SUBDIRS = /s/man//' Makefile.in
+          rm -f man/Makefile.*
+          if [ -f apps/openssl/Makefile.am ]; then
+            sed -i -e '/^dist_man_MANS/s/openssl\.1//' apps/openssl/Makefile.am
+            sed -i -e '/^dist_man_MANS/s/openssl\.1//' apps/openssl/Makefile.in
+          fi
+
+          # Don't build libtls
+          sed -i -e '/^ac_config_files=/s#tls/Makefile##' configure
+          sed -i -e '/^SUBDIRS = /s/tls//' Makefile.am
+          sed -i -e '/^SUBDIRS = /s/tls//' Makefile.in
+          rm -f tls/Makefile
+          sed -i -e '/^ac_config_files=/s#libtls\.pc##' configure
+          sed -i -e '/^pkgconfig_DATA = /s/libtls\.pc//' Makefile.am
+          sed -i -e '/^pkgconfig_DATA = /s/libtls\.pc//' Makefile.in
+          sed -i -e '/^include_HEADERS = /s/tls\.h//' include/Makefile.am
+          sed -i -e '/^include_HEADERS = /s/tls\.h//' include/Makefile.in
+
+          # Don't build the nc or ocspcheck apps (they use libtls)
+          if [ -d apps/nc ]; then
+            sed -i -e '/^ac_config_files=/s#apps/nc/Makefile##' configure
+            sed -i -e '/^SUBDIRS = /s/nc//' apps/Makefile.am
+            sed -i -e '/^SUBDIRS = /s/nc//' apps/Makefile.in
+            rm -f apps/nc/Makefile.*
+          fi
+          if [ -d apps/ocspcheck ]; then
+            sed -i -e '/^ac_config_files=/s#apps/ocspcheck/Makefile##' configure
+            sed -i -e '/^SUBDIRS = /s/ocspcheck//' apps/Makefile.am
+            sed -i -e '/^SUBDIRS = /s/ocspcheck//' apps/Makefile.in
+            rm -f apps/nc/Makefile.*
+          fi
+
+          # Don't build tests (some of them rely on libtls)
+          if echo ${{ matrix.version }} | grep -q '^\(2\|3\.0\)'; then
+            sed -i -e '/^ac_config_files=/s#tests/Makefile##' configure
+            sed -i -e '/^SUBDIRS = /s/tests//' Makefile.am
+            sed -i -e '/^SUBDIRS = /s/tests//' Makefile.in
+            rm -f tests/Makefile.*
+          else
+            config_opts="$config_opts --disable-tests"
+          fi
+
+          ./configure --help
+
+          CFLAGS="-fPIC" \
+          ./configure \
+            --prefix=$HOME/libssl \
+            --enable-shared \
+            --disable-static \
+            --with-openssldir=$HOME/libssl \
+            $config_opts
+
+      - name: Build LibreSSL
+        working-directory: libressl-${{ matrix.version }}
+        run: |
+          make
+
+      - name: Install LibreSSL
+        working-directory: libressl-${{ matrix.version }}
+        run: |
+          make install
+
+          # The default configuration file isn't installed by "make install" in
+          # LibreSSL 2.1 and below, and LibreSSL 2.0 doesn't ship a default
+          # configuration at all
+          if [ ! -f $HOME/libssl/openssl.cnf ]; then
+            if [ -f apps/openssl.cnf ]; then
+              install -m0644 apps/openssl.cnf $HOME/libssl/openssl.cnf
+            else
+              cat > $HOME/libssl/openssl.cnf << '    EOF'
+          [ req ]
+          distinguished_name = req_distinguished_name
+          attributes         = req_attributes
+
+          [ req_distinguished_name ]
+          countryName            = Country Name (2 letter code)
+          countryName_min        = 2
+          countryName_max        = 2
+          stateOrProvinceName    = State or Province Name (full name)
+          localityName           = Locality Name (eg, city)
+          0.organizationName     = Organization Name (eg, company)
+          organizationalUnitName = Organizational Unit Name (eg, section)
+          commonName             = Common Name (eg, fully qualified host name)
+          commonName_max         = 64
+          emailAddress           = Email Address
+          emailAddress_max       = 64
+
+          [ req_attributes ]
+          challengePassword     = A challenge password
+          challengePassword_min = 4
+          challengePassword_max = 20
+              EOF
+            fi
+          fi
+
+      - name: Minify LibreSSL installation
+        run: |
+          ls -aslR $HOME/libssl
+          du -sh $HOME/libssl
+          echo ================================
+          cd $HOME/libssl
+
+          # We don't need the static libraries
+          rm -f $HOME/libssl/lib/*.a
+
+          # We don't need the libtool files
+          rm -f $HOME/libssl/lib/*.la
+
+          cd
+          ls -aslR $HOME/libssl
+          du -sh $HOME/libssl
+
+      - name: Create LibreSSL binary tarball
+        id: tarball
+        run: |
+          cd $HOME
+          tar \
+            --sort=name \
+            --owner=root:0 \
+            --group=root:0 \
+            --mtime='UTC 2020-01-01' \
+            -cJf libressl-${{ matrix.version }}.tar.xz \
+            libssl
+
+      - name: Obtain GitHub App installation access token
+        id: gh_app
+        run: |
+          token="$(npx obtain-github-app-installation-access-token ci ${{ secrets.GH_APP_CREDENTIALS_TOKEN }})"
+          echo "::add-mask::$token"
+          echo "::set-output name=token::$token"
+
+      - name: Create GitHub release for LibreSSL ${{ matrix.version }}
+        id: release
+        run: |
+          release="$( \
+            curl \
+              --fail \
+              -H "Authorization: Bearer ${{ steps.gh_app.outputs.token }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              $GH_API_ROOT/releases/tags/libressl-${{ matrix.version }} \
+            || \
+            curl \
+              --fail \
+              -H "Authorization: Bearer ${{ steps.gh_app.outputs.token }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              -X POST \
+              -d '{
+                "tag_name": "libressl-${{ matrix.version }}",
+                "target_commitish": "${{ github.sha }}",
+                "name": "LibreSSL ${{ matrix.version }}",
+                "draft": false,
+                "prerelease": false
+              }' \
+              $GH_API_ROOT/releases \
+          )"
+
+          release_id="$(echo "$release" | jq -r .id)"
+          target_commit="$(echo "$release" | jq -r .target_commitish)"
+          asset_id="$(echo "$release" | jq -r '[ .assets[] | select(.name == "libressl-${{ matrix.version }}-ubuntu-20.04.tar.xz") ] | first.id')"
+
+          echo "::set-output name=release_id::$release_id"
+          echo "::set-output name=target_commit::$target_commit"
+          echo "::set-output name=asset_id::$asset_id"
+
+      - name: Update commit hash for libressl-${{ matrix.version }} tag
+        run: |
+          curl \
+            --fail \
+            -H "Authorization: Bearer ${{ steps.gh_app.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -X PATCH \
+            -d '{
+              "sha": "${{ github.sha }}",
+              "force": true
+            }' \
+            $GH_API_ROOT/git/refs/tags/libressl-${{ matrix.version }}
+        if: ${{ github.sha != steps.release.outputs.target_commit }}
+
+      - name: Update target commit hash for GitHub release
+        run: |
+          curl \
+            --fail \
+            -H "Authorization: Bearer ${{ steps.gh_app.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -X PATCH \
+            -d '{
+              "target_commitish": "${{ github.sha }}"
+            }' \
+            $GH_API_ROOT/releases/${{ steps.release.outputs.release_id }}
+        if: ${{ github.sha != steps.release.outputs.target_commit }}
+
+      - name: Upload GitHub release asset
+        run: |
+          if [ "${{ steps.release.outputs.asset_id }}" != "null" ]; then
+            curl \
+              --fail \
+              -H "Authorization: Bearer ${{ steps.gh_app.outputs.token }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              -X DELETE \
+              $GH_API_ROOT/releases/assets/${{ steps.release.outputs.asset_id }}
+          fi
+
+          curl \
+            --fail \
+            -H "Authorization: Bearer ${{ steps.gh_app.outputs.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Content-Type: application/x-xz" \
+            -X POST \
+            --data-binary "@$HOME/libressl-${{ matrix.version }}.tar.xz" \
+            $GH_UPLOAD_ROOT/releases/${{ steps.release.outputs.release_id }}/assets?name=libressl-${{ matrix.version }}-ubuntu-20.04.tar.xz
+
   openssl:
     name: OpenSSL ${{ matrix.version }}
     runs-on: ubuntu-20.04
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         version:
           # OpenSSL 0.9.8
