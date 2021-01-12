@@ -18,6 +18,18 @@ Tarballs are currently built for the following libssl implementations:
 
 * [LibreSSL](https://www.libressl.org) - stable releases in the following series
   only; development versions are omitted:
+  * 2.0 series (2.0.5 - 2.0.6)
+  * 2.1 series (2.1.5 - 2.1.10)
+  * 2.2 series (2.2.2 - 2.2.9)
+  * 2.3 series (2.3.3 - 2.3.10)
+  * 2.4 series (2.4.2 - 2.4.5)
+  * 2.5 series (2.5.3 - 2.5.5)
+  * 2.6 series (2.6.3 - 2.6.5)
+  * 2.7 series (2.7.2 - 2.7.5)
+  * 2.8 series (2.8.2 - 2.8.3)
+  * 2.9 series (2.9.2)
+  * 3.0 series (3.0.2)
+  * 3.1 series (3.1.1 - 3.1.5)
   * 3.2 series (3.2.2 - 3.2.3)
 * [OpenSSL](https://www.openssl.org) - stable releases in the following branches
   only; alpha, beta and prerelease versions are omitted:
