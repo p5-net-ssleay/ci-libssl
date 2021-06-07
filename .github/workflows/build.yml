@@ -463,6 +463,8 @@ jobs:
           - '1.1.1g'
           - '1.1.1h'
           - '1.1.1i'
+          - '1.1.1j'
+          - '1.1.1k'
     steps:
       - name: Check out ci-libssl repository
         uses: actions/checkout@v2

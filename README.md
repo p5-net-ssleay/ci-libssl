@@ -39,4 +39,4 @@ Tarballs are currently built for the following libssl implementations:
   * 1.0.1 branch (1.0.1 - 1.0.1u)
   * 1.0.2 branch (1.0.2 - 1.0.2u)
   * 1.1.0 branch (1.1.0 - 1.1.0l)
-  * 1.1.1 branch (1.1.1 - 1.1.1i)
+  * 1.1.1 branch (1.1.1 - 1.1.1k)
