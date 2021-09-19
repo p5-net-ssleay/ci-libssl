@@ -468,6 +468,8 @@ jobs:
           - '1.1.1j'
           - '1.1.1k'
           - '1.1.1l'
+          # OpenSSL 3.0
+          - '3.0.0'
     steps:
       - name: Check out ci-libssl repository
         uses: actions/checkout@v2
@@ -485,7 +487,7 @@ jobs:
               0.9.8*)
                 src_path="source/old/0.9.x"
                 ;;
-              1.1.1*)
+              1.1.1*|3.0.*)
                 src_path="source"
                 ;;
               *)
@@ -563,8 +565,10 @@ jobs:
           cd $HOME/libssl
 
           # Don't keep unnecessary engines
-          for i in 4758cca aep atalla capi chil cswift gmp gost nuron padlock sureware ubsec; do
-            if echo ${{ matrix.version }} | grep -q '^1\.1'; then
+          for i in 4758cca aep atalla capi chil cswift gmp gost loader_attic nuron padlock sureware ubsec; do
+            if echo ${{ matrix.version }} | grep -q '^3\.'; then
+              rm -f $HOME/libssl/lib/engines-3/$i.so
+            elif echo ${{ matrix.version }} | grep -q '^1\.1'; then
               rm -f $HOME/libssl/lib/engines-1.1/$i.so
             else
               rm -f $HOME/libssl/lib/engines/lib$i.so
