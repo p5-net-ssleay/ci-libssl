@@ -126,10 +126,11 @@ jobs:
           sed -i -e '/^ac_config_files=/s#man/Makefile##' configure
           sed -i -e '/^SUBDIRS = /s/man//' Makefile.am
           sed -i -e '/^SUBDIRS = /s/man//' Makefile.in
+          sed -i -e '/^DIST_SUBDIRS = /s/man//' Makefile.in
           rm -f man/Makefile.*
           if [ -f apps/openssl/Makefile.am ]; then
-            sed -i -e '/^dist_man_MANS/s/openssl\.1//' apps/openssl/Makefile.am
-            sed -i -e '/^dist_man_MANS/s/openssl\.1//' apps/openssl/Makefile.in
+            sed -i -e '/dist_man_MANS = /s/openssl\.1//' apps/openssl/Makefile.am
+            sed -i -e '/dist_man_MANS = /s/openssl\.1//' apps/openssl/Makefile.in
           fi
 
           # Don't build libtls
