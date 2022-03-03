@@ -89,6 +89,9 @@ jobs:
           - '3.3.5'
           # LibreSSL 3.4
           - '3.4.1'
+          - '3.4.2'
+          # LibreSSL 3.5
+          - '3.5.0'
     steps:
       - name: Check out ci-libssl repository
         uses: actions/checkout@v2
