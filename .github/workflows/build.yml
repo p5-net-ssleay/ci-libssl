@@ -99,10 +99,10 @@ jobs:
           - '3.6.1'
     steps:
       - name: Check out ci-libssl repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Restore cached LibreSSL source tarball
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: libressl-${{ matrix.version }}.tar.gz
           key: libressl-${{ matrix.version }}
@@ -499,10 +499,10 @@ jobs:
           - '3.0.7'
     steps:
       - name: Check out ci-libssl repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Restore cached OpenSSL source tarball
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: openssl-${{ matrix.version }}.tar.gz
           key: openssl-${{ matrix.version }}
