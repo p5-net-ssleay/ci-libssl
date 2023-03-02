@@ -33,8 +33,8 @@ Tarballs are currently built for the following libssl implementations:
   * 3.2 series (3.2.2 - 3.2.7)
   * 3.3 series (3.3.3 - 3.3.6)
   * 3.4 series (3.4.1 - 3.4.3)
-  * 3.5 series (3.5.2 - 3.5.3)
-  * 3.6 series (3.6.1)
+  * 3.5 series (3.5.2 - 3.5.4)
+  * 3.6 series (3.6.1 - 3.6.2)
 * [OpenSSL](https://www.openssl.org) - stable releases in the following branches
   only; alpha, beta, prerelease, and withdrawn versions are omitted:
   * 0.9.8 branch (0.9.8 - 0.9.8zh)
@@ -42,5 +42,5 @@ Tarballs are currently built for the following libssl implementations:
   * 1.0.1 branch (1.0.1 - 1.0.1u)
   * 1.0.2 branch (1.0.2 - 1.0.2u)
   * 1.1.0 branch (1.1.0 - 1.1.0l)
-  * 1.1.1 branch (1.1.1 - 1.1.1q, 1.1.1s)
-  * 3.0 branch (3.0.0 - 3.0.5, 3.0.7)
+  * 1.1.1 branch (1.1.1 - 1.1.1q, 1.1.1s - 1.1.1t)
+  * 3.0 branch (3.0.0 - 3.0.5, 3.0.7 - 3.0.8)
