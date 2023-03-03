@@ -263,7 +263,7 @@ jobs:
         run: |
           token="$(npx obtain-github-app-installation-access-token ci ${{ secrets.GH_APP_CREDENTIALS_TOKEN }})"
           echo "::add-mask::$token"
-          echo "::set-output name=token::$token"
+          echo "token=$token" >> $GITHUB_OUTPUT
 
       - name: Create GitHub release for LibreSSL ${{ matrix.version }}
         id: release
@@ -294,9 +294,9 @@ jobs:
           target_commit="$(echo "$release" | jq -r .target_commitish)"
           asset_id="$(echo "$release" | jq -r '[ .assets[] | select(.name == "libressl-${{ matrix.version }}-ubuntu-20.04.tar.xz") ] | first.id')"
 
-          echo "::set-output name=release_id::$release_id"
-          echo "::set-output name=target_commit::$target_commit"
-          echo "::set-output name=asset_id::$asset_id"
+          echo "release_id=$release_id" >> $GITHUB_OUTPUT
+          echo "target_commit=$target_commit" >> $GITHUB_OUTPUT
+          echo "asset_id=$asset_id" >> $GITHUB_OUTPUT
 
       - name: Update commit hash for libressl-${{ matrix.version }} tag
         run: |
@@ -634,7 +634,7 @@ jobs:
         run: |
           token="$(npx obtain-github-app-installation-access-token ci ${{ secrets.GH_APP_CREDENTIALS_TOKEN }})"
           echo "::add-mask::$token"
-          echo "::set-output name=token::$token"
+          echo "token=$token" >> $GITHUB_OUTPUT
 
       - name: Create GitHub release for OpenSSL ${{ matrix.version }}
         id: release
@@ -665,9 +665,9 @@ jobs:
           target_commit="$(echo "$release" | jq -r .target_commitish)"
           asset_id="$(echo "$release" | jq -r '[ .assets[] | select(.name == "openssl-${{ matrix.version }}-ubuntu-20.04.tar.xz") ] | first.id')"
 
-          echo "::set-output name=release_id::$release_id"
-          echo "::set-output name=target_commit::$target_commit"
-          echo "::set-output name=asset_id::$asset_id"
+          echo "release_id=$release_id" >> $GITHUB_OUTPUT
+          echo "target_commit=$target_commit" >> $GITHUB_OUTPUT
+          echo "asset_id=$asset_id" >> $GITHUB_OUTPUT
 
       - name: Update commit hash for openssl-${{ matrix.version }} tag
         run: |
