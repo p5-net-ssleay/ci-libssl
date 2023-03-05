@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 env:
   GH_API_ROOT: https://api.github.com/repos/p5-net-ssleay/ci-libssl
