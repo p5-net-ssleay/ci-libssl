@@ -535,23 +535,19 @@ jobs:
 
       - name: Download OpenSSL source tarball
         run: |
-          if [ ! -f openssl-${{ matrix.version }}.tar.gz ]; then
+          if [ ! -f "openssl-${{ matrix.version }}.tar.gz" ]; then
             case "${{ matrix.version }}" in
-              0.9.8*)
-                src_path="source/old/0.9.x"
-                ;;
-              1.1.1*|3.*)
-                src_path="source"
+              3.*)
+                tag="openssl-${{ matrix.version }}"
                 ;;
               *)
-                src_path="source/old/$(echo ${{ matrix.version }} | sed -e 's/[a-z]*$//')"
+                tag="OpenSSL_$(echo "${{ matrix.version }}" | tr . _)"
                 ;;
             esac
 
-            curl \
-              --fail \
+            curl -fL \
               -o openssl-${{ matrix.version }}.tar.gz \
-              https://www.openssl.org/$src_path/openssl-${{ matrix.version }}.tar.gz
+              https://github.com/openssl/openssl/releases/download/$tag/openssl-${{ matrix.version }}.tar.gz
           fi
 
       - name: Extract OpenSSL source tarball
