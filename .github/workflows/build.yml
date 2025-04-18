@@ -1,4 +1,4 @@
-name: 'Build: Ubuntu 20.04'
+name: 'Build: Ubuntu 24.04'
 
 on:
   push:
@@ -13,7 +13,7 @@ env:
 jobs:
   libressl:
     name: LibreSSL ${{ matrix.version }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -299,7 +299,7 @@ jobs:
 
           release_id="$(echo "$release" | jq -r .id)"
           target_commit="$(echo "$release" | jq -r .target_commitish)"
-          asset_id="$(echo "$release" | jq -r '[ .assets[] | select(.name == "libressl-${{ matrix.version }}-ubuntu-20.04.tar.xz") ] | first.id')"
+          asset_id="$(echo "$release" | jq -r '[ .assets[] | select(.name == "libressl-${{ matrix.version }}-ubuntu-24.04.tar.xz") ] | first.id')"
 
           echo "release_id=$release_id" >> $GITHUB_OUTPUT
           echo "target_commit=$target_commit" >> $GITHUB_OUTPUT
@@ -350,11 +350,11 @@ jobs:
             -H "Content-Type: application/x-xz" \
             -X POST \
             --data-binary "@$HOME/libressl-${{ matrix.version }}.tar.xz" \
-            $GH_UPLOAD_ROOT/releases/${{ steps.release.outputs.release_id }}/assets?name=libressl-${{ matrix.version }}-ubuntu-20.04.tar.xz
+            $GH_UPLOAD_ROOT/releases/${{ steps.release.outputs.release_id }}/assets?name=libressl-${{ matrix.version }}-ubuntu-24.04.tar.xz
 
   openssl:
     name: OpenSSL ${{ matrix.version }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -685,7 +685,7 @@ jobs:
 
           release_id="$(echo "$release" | jq -r .id)"
           target_commit="$(echo "$release" | jq -r .target_commitish)"
-          asset_id="$(echo "$release" | jq -r '[ .assets[] | select(.name == "openssl-${{ matrix.version }}-ubuntu-20.04.tar.xz") ] | first.id')"
+          asset_id="$(echo "$release" | jq -r '[ .assets[] | select(.name == "openssl-${{ matrix.version }}-ubuntu-24.04.tar.xz") ] | first.id')"
 
           echo "release_id=$release_id" >> $GITHUB_OUTPUT
           echo "target_commit=$target_commit" >> $GITHUB_OUTPUT
@@ -736,4 +736,4 @@ jobs:
             -H "Content-Type: application/x-xz" \
             -X POST \
             --data-binary "@$HOME/openssl-${{ matrix.version }}.tar.xz" \
-            $GH_UPLOAD_ROOT/releases/${{ steps.release.outputs.release_id }}/assets?name=openssl-${{ matrix.version }}-ubuntu-20.04.tar.xz
+            $GH_UPLOAD_ROOT/releases/${{ steps.release.outputs.release_id }}/assets?name=openssl-${{ matrix.version }}-ubuntu-24.04.tar.xz
