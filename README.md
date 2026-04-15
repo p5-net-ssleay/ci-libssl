@@ -56,3 +56,4 @@ Tarballs are currently built for the following libssl implementations:
   * 3.4 branch (3.4.0 - 3.4.4)
   * 3.5 branch (3.5.0 - 3.5.5)
   * 3.6 branch (3.6.0 - 3.6.1)
+  * 4.0 branch (4.0.0)
