@@ -597,11 +597,11 @@ jobs:
         run: |
           if [ ! -f "openssl-${{ matrix.version }}.tar.gz" ]; then
             case "${{ matrix.version }}" in
-              3.*)
-                tag="openssl-${{ matrix.version }}"
+              0.9.*|1.*)
+                tag="OpenSSL_$(echo "${{ matrix.version }}" | tr . _)"
                 ;;
               *)
-                tag="OpenSSL_$(echo "${{ matrix.version }}" | tr . _)"
+                tag="openssl-${{ matrix.version }}"
                 ;;
             esac
 
